@@ -1,0 +1,845 @@
+package cn.com.dahua.ics.controller;
+
+import org.springframework.beans.factory.annotation.*;
+import javax.annotation.*;
+import cn.com.dahua.ics.handle.*;
+import cn.com.dahua.config.*;
+import cn.com.dahua.ics.feign.*;
+import cn.com.dahua.ics.service.*;
+import cn.com.dahua.ilog.config.*;
+import cn.com.dahua.ics.mapper.*;
+import org.slf4j.*;
+import org.springframework.util.*;
+import cn.com.dahua.ilog.bean.annotation.*;
+import cn.com.dahua.ics.util.*;
+import cn.com.dahua.ics.enums.*;
+import cn.com.dahua.ics.model.pojo.*;
+import javax.validation.*;
+import com.alibaba.fastjson.*;
+import cn.com.dahua.ics.service.impl.*;
+import org.springframework.web.bind.annotation.*;
+import java.util.*;
+import cn.com.dahua.ics.model.*;
+
+@RestController
+@RequestMapping({ "/ics/out" })
+@CrossOrigin
+public class OutServiceController
+{
+    private Logger logger;
+    @Autowired
+    private RedisService redisService;
+    @Autowired
+    private ModelProcessService modelProcessService;
+    @Autowired
+    private TaskTemplateService taskTemplateService;
+    @Autowired
+    private StockCurrStatusService stockCurrStatusService;
+    @Autowired
+    private TaskOrderMapper taskOrderMapper;
+    @Autowired
+    private ModelProcessMapper modelProcessMapper;
+    @Autowired
+    private IcsTaskOrderService taskOrderService;
+    @Autowired
+    private OutService outService;
+    @Resource
+    private AlarmConfigMapper alarmConfigMapper;
+    @Autowired
+    private AgvManagerService agvManagerService;
+    @Autowired
+    private ShelfConfigService shelfConfigService;
+    @Autowired
+    private AgvRobotExtMapper agvRobotExtMapper;
+    @Autowired
+    private TaskGroupMapper taskGroupMapper;
+    @Autowired
+    private PointsManageMapper pointsManageMapper;
+    @Autowired
+    private PushAlarmMessage pushAlarmMessage;
+    @Autowired
+    private BmsAreaMapper bmsAreaMapper;
+    @Autowired
+    private IcsSystemConfig icsSystemConfig;
+    @Autowired
+    private BMSFeign bmsFeign;
+    @Autowired
+    private PMSFeign pmsFeign;
+    @Autowired
+    private TaskService taskService;
+    @Autowired
+    private CommonSystemConfig commonSystemConfig;
+    @Autowired
+    private TaskOrderDetailMapper taskOrderDetailMapper;
+    private JSONArray materialInfo;
+    
+    public OutServiceController() {
+        this.logger = LoggerFactory.getLogger((Class)OutServiceController.class);
+        this.materialInfo = new JSONArray();
+    }
+    
+    @RequestMapping({ "/sendDeviceAlarm" })
+    public String sendDeviceAlarm(@RequestBody final String message) {
+        try {
+            final JSONObject messageJson = JSONObject.parseObject(message);
+            if (StringUtils.isEmpty((Object)messageJson.getString("areaId")) || StringUtils.isEmpty((Object)messageJson.getString("alarmSource")) || StringUtils.isEmpty((Object)messageJson.getString("alarmState")) || StringUtils.isEmpty((Object)messageJson.getString("alarmType")) || StringUtils.isEmpty((Object)messageJson.getString("alarmTime"))) {
+                final String returnInfo = ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+                this.logger.info(" [sendDeviceAlarm] requestParam {} send deviceAlarm throw exception > {}", (Object)message, (Object)returnInfo);
+                return returnInfo;
+            }
+            final String deviceCode = messageJson.getString("deviceCode");
+            this.logger.info(" [sendDeviceAlarm] deviceCode {} send deviceAlarm request parameter > {}", (Object)deviceCode, (Object)message);
+            final AlarmLog alarmLog = new AlarmLog();
+            alarmLog.setDeviceCode(deviceCode);
+            alarmLog.setDeviceName(messageJson.getString("deviceCode"));
+            alarmLog.setDeviceNum(messageJson.getString("deviceName"));
+            alarmLog.setDeviceArea(messageJson.getInteger("areaId"));
+            alarmLog.setAlarmState(messageJson.getInteger("alarmState"));
+            alarmLog.setAlarmType(messageJson.getInteger("alarmType"));
+            final List<AlarmConfig> alarmConfig = this.alarmConfigMapper.getAdviceByType(messageJson.getInteger("alarmType"));
+            if (alarmConfig != null && alarmConfig.size() == 1) {
+                alarmLog.setAlarmGrade(alarmConfig.get(0).getAlarmLevel());
+                alarmLog.setChannelName(alarmConfig.get(0).getAdvise());
+                messageJson.put("alarmLevel", (Object)alarmConfig.get(0).getAlarmLevel());
+                alarmLog.setRemark(alarmConfig.get(0).getAlarmName());
+            }
+            final long AlarmTime = messageJson.getLong("alarmTime");
+            alarmLog.setAlarmDate(String.valueOf(AlarmTime));
+            alarmLog.setAlarmTime(AlarmTime);
+            alarmLog.setChannelDeviceId(messageJson.getString("qrCode"));
+            alarmLog.setHandleMessage(messageJson.getString("handleMessage"));
+            alarmLog.setRcsOutOrderId(messageJson.getString("outOrderId"));
+            alarmLog.setAlarmReadFlag(1);
+            alarmLog.setAlarmSource(messageJson.getString("alarmSource"));
+            this.pushAlarmMessage.sendAlarmMessage(alarmLog);
+            messageJson.put("id", (Object)alarmLog.getId());
+            messageJson.put("deviceNum", (Object)messageJson.getString("deviceCode"));
+            final Long areaId = (Long)alarmLog.getDeviceArea();
+            this.logger.info("Alarm message id : {}", (Object)areaId.toString());
+            messageJson.put("areaName", (Object)messageJson.getInteger("areaId"));
+            this.redisService.setAlarmMessage(messageJson.toJSONString());
+            final String returnInfo = ReplyUtil.replySuccess("\u8bf7\u6c42\u6210\u529f");
+            this.logger.info(" [sendDeviceAlarm] deviceCode {} send deviceAlarm response parameter > {}", (Object)deviceCode, (Object)returnInfo);
+            return returnInfo;
+        }
+        catch (Exception e) {
+            this.logger.info(" [sendDeviceAlarm] requestParam {} send deviceAlarm throw exception > {}", (Object)message, (Object)e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+    }
+    
+    @BusinessLog
+    @RequestMapping({ "/task/getTaskOrderStatus" })
+    public String getTaskOrderStatus(@RequestBody final Map<String, Object> params) {
+        if (!params.containsKey("orderId") && !params.containsKey("subOrderId")) {
+            final String returnInfo = ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+            return returnInfo;
+        }
+        final String outOrderId = Objects.nonNull(params.get("orderId")) ? String.valueOf(params.get("orderId")) : null;
+        final String subOrderId = Objects.nonNull(params.get("subOrderId")) ? String.valueOf(params.get("subOrderId")) : null;
+        this.logger.info(" [getTaskOrderStatus] orderId {}, subOrderId {} get taskOrder status request parameter > {}", new Object[] { outOrderId, subOrderId, JSONObject.toJSONString((Object)params) });
+        String result;
+        try {
+            result = this.taskOrderService.getTaskOrderByOutOrderId(outOrderId, subOrderId);
+        }
+        catch (Exception e) {
+            this.logger.info(" [getTaskOrderStatus] requestParam {} get taskOrder status throw exception > {}", (Object)JSONObject.toJSONString((Object)params), (Object)e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        this.logger.info(" [getTaskOrderStatus] orderId {} get taskOrder status response parameter > {}", (Object)outOrderId, (Object)result);
+        return result;
+    }
+    
+    @BusinessLog
+    @RequestMapping({ "/task/cancelTask" })
+    public String cancelTask(@RequestBody final String request, @RequestHeader(value = "appName", required = false) final String appName) {
+        try {
+            final JSONArray requestJson = JSONArray.parseArray(request);
+            for (int i = 0; i < requestJson.size(); ++i) {
+                final JSONObject json = requestJson.getJSONObject(i);
+                if (!json.containsKey((Object)"orderId") && !json.containsKey((Object)"subOrderId") && !json.containsKey((Object)"deviceNumber")) {
+                    this.logger.info(" [cancelTask] requestParam {} cancel taskOrder throw exception > {}", (Object)json, (Object)"request parameter key orderId not exists !!!");
+                }
+                else {
+                    final String taskOrderId = json.getString("orderId");
+                    final String deviceNumber = json.getString("deviceNumber");
+                    final String subOrderId = json.getString("subOrderId");
+                    String taskOrderDetailId = null;
+                    IcsTaskOrder icsTaskOrder = null;
+                    if (Objects.nonNull(subOrderId)) {
+                        final IcsTaskOrderDetail icsTaskOrderDetail = this.taskOrderDetailMapper.getTaskOrderDetailBySubOrderId(subOrderId);
+                        if (icsTaskOrderDetail == null) {
+                            final String returnInfo = ReplyUtil.replyError(8007, "\u5f53\u524d\u8ba2\u5355\u4e0d\u5b58\u5728");
+                            this.logger.info(" [cancelTask] subOrderId {} cancel taskOrderDetail fail, response parameter > {}", (Object)subOrderId, (Object)returnInfo);
+                            return returnInfo;
+                        }
+                        taskOrderDetailId = String.valueOf(icsTaskOrderDetail.getId());
+                    }
+                    if (org.apache.commons.lang3.StringUtils.isNotEmpty((CharSequence)deviceNumber) && StringUtil.isNullOrEmpty(subOrderId)) {
+                        final TaskGroup taskGroup = this.taskGroupMapper.getTaskGroupByDeviceNumber(deviceNumber);
+                        if (Objects.isNull(taskGroup)) {
+                            return ReplyUtil.replyError(8127, "\u8be5\u8bbe\u5907\u5f53\u524d\u65e0\u4efb\u52a1\u6267\u884c\u4e2d,\u4e0d\u9700\u8981\u53d6\u6d88");
+                        }
+                        final String outOrderId = taskGroup.getOutOrderId();
+                        if (StringUtil.isNullOrEmpty(outOrderId) || !CommonUtil.isIntegerString(outOrderId)) {
+                            this.logger.error("[cancelTask] ERROR, by deviceNumber not find taskOrderDetailId or  taskOrderDetailId cannot format to Integer for {}", (Object)outOrderId);
+                            return ReplyUtil.replyError(8128, "\u8be5\u8bbe\u5907\u8ba2\u5355\u975e\u7b2c\u4e09\u65b9\u4e0b\u53d1\u8ba2\u5355\uff0c\u8bf7\u5728RCS\u5e73\u53f0\u53d6\u6d88");
+                        }
+                        taskOrderDetailId = outOrderId;
+                    }
+                    this.logger.info(" [cancelTask] orderId {} or taskOrderDetailId {} cancel taskOrder request parameter > {}", new Object[] { taskOrderId, taskOrderDetailId, requestJson.toJSONString() });
+                    if (Objects.nonNull(taskOrderDetailId)) {
+                        icsTaskOrder = this.taskOrderMapper.getTaskOrderByOrderDetailId(taskOrderDetailId);
+                        json.put("taskOrderDetailId", (Object)taskOrderDetailId);
+                    }
+                    if (Objects.isNull(taskOrderDetailId) && Objects.nonNull(taskOrderId)) {
+                        this.logger.info("[ThirdCancelTask] cancel out taskOrderId > {}", (Object)taskOrderId);
+                        final Map<String, Object> map = new HashMap<String, Object>();
+                        map.put("outOrderId", taskOrderId);
+                        if (this.outService.isWaveTask(map)) {
+                            this.logger.info("[ThirdCancelTask] outOrderId {} matching task is waveTask, need by subOrderId continueTask", (Object)taskOrderId);
+                            return ReplyUtil.replyError(8150, "\u6ce2\u6b21\u4efb\u52a1\u8bf7\u4f7f\u7528\u5b50\u8ba2\u5355\u53f7\u5b57\u6bb5");
+                        }
+                        icsTaskOrder = this.taskOrderMapper.getTaskOrderByOutOrderId(taskOrderId);
+                        if (icsTaskOrder == null) {
+                            final String returnInfo = ReplyUtil.replyError(8007, "\u5f53\u524d\u8ba2\u5355\u4e0d\u5b58\u5728");
+                            this.logger.info(" [cancelTask] orderId {} cancel taskOrder response parameter > {}", (Object)taskOrderId, (Object)returnInfo);
+                            return returnInfo;
+                        }
+                    }
+                    String destPosition = json.getString("destPosition");
+                    final String destStorage = json.getString("destStorage");
+                    if (StringUtils.hasText(destPosition)) {
+                        PointsMappingSet pms = new PointsMappingSet(destPosition, icsTaskOrder.getAreaId());
+                        pms = this.pointsManageMapper.getByPointsMapping(pms);
+                        if (pms != null) {
+                            this.logger.info("[ThirdCancelTask] destPosition: {}, translate to qrContent: {}", (Object)destPosition, (Object)pms.getQrCode());
+                            destPosition = pms.getQrCode();
+                        }
+                    }
+                    final String result = this.taskOrderService.cancelTaskOrderById(icsTaskOrder.getId() + "", destPosition, destStorage, appName, CancelTaskTypeEnum.THIRD_SERVICE_REQUEST_CANCEL_TASK.getCode(), json);
+                    this.logger.info(" [cancelTask] orderId {} cancel taskOrder response parameter > {}", (Object)taskOrderId, (Object)result);
+                    final JSONObject resultJson = JSONObject.parseObject(result);
+                    final Integer code = resultJson.getInteger("code");
+                    if (1000 != code && 2113 != code && 2114 != code && 2115 != code) {
+                        if (20084 != code) {
+                            final JSONObject rcsResultJson = JSONObject.parseObject(result);
+                            rcsResultJson.put("desc", rcsResultJson.get((Object)"data"));
+                            return rcsResultJson.toJSONString();
+                        }
+                    }
+                }
+            }
+            return ReplyUtil.replySuccess(null);
+        }
+        catch (Exception e) {
+            this.logger.info(" [cancelTask] requestParam {} cancel taskOrder throw exception > {}", (Object)request, (Object)e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+    }
+    
+    @RequestMapping({ "/getStockStatus" })
+    public String getStockStatus(@RequestBody final Map<String, Object> params) {
+        try {
+            if (!params.containsKey("pageSize")) {
+                params.put("pageSize", this.icsSystemConfig.getPageSize());
+            }
+            if (!params.containsKey("pageNo")) {
+                params.put("pageNo", 1);
+            }
+            return this.stockCurrStatusService.getStockCurrStatusByAreaId(params);
+        }
+        catch (NumberFormatException e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+    }
+    
+    @RequestMapping({ "/device/list/deviceInfo" })
+    public String listDeviceInfo(@RequestBody final Map<String, Object> params) {
+        if (!params.containsKey("deviceType")) {
+            return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+        }
+        String result;
+        try {
+            this.logger.info(" [listDeviceInfo] deviceType {} query listDeviceInfo request parameter > {}", (Object)params.containsKey("deviceType"), (Object)JSONObject.toJSONString((Object)params));
+            result = ReplyUtil.replySuccess(this.outService.listDeviceInfo(params));
+            this.logger.info(" [listDeviceInfo] deviceType {} query listDeviceInfo  response parameter > {}", (Object)params.containsKey("deviceType"), (Object)result);
+        }
+        catch (Exception e) {
+            result = ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+            this.logger.info(" [listDeviceInfo] requestParam {} query listDeviceInfo  throw exception > {}", (Object)JSONObject.toJSONString((Object)params), (Object)e);
+            return result;
+        }
+        return result;
+    }
+    
+    @BusinessLog
+    @RequestMapping({ "/task/continueTask" })
+    public String continueTask(@RequestBody @Valid final ContinueTaskModel continueTaskModel) {
+        this.logger.info(" [continueTask] orderId or shelfNumber {} continue taskOrder request parameter > {}", (Object)continueTaskModel.getShelfNumber(), (Object)JSONObject.toJSONString((Object)continueTaskModel));
+        if (StringUtils.isEmpty((Object)continueTaskModel.getOrderId()) && StringUtils.isEmpty((Object)continueTaskModel.getShelfNumber()) && StringUtils.isEmpty((Object)continueTaskModel.getCurrentStation()) && StringUtils.isEmpty((Object)continueTaskModel.getDeviceNum()) && StringUtils.isEmpty((Object)continueTaskModel.getSubOrderId())) {
+            return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+        }
+        try {
+            final String result = this.outService.continueTask(continueTaskModel);
+            this.logger.info(" [continueTask] orderId {} continueTask taskOrder response parameter > {}", (Object)continueTaskModel.getOrderId(), (Object)result);
+            return result;
+        }
+        catch (NumberFormatException e) {
+            this.logger.info(" [continueTask] requestParam {} continueTask taskOrder throw exception > {}", (Object)JSONObject.toJSONString((Object)continueTaskModel), (Object)e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+    }
+    
+    @BusinessLog
+    @RequestMapping({ "/task/continueByCallNumber" })
+    public String continueTaskByCallNumber(@RequestBody final Map<String, Object> params) {
+        final Object callPosition = params.get("callPosition");
+        final Object areaId = params.get("areaId");
+        if (StringUtils.isEmpty(callPosition) || StringUtils.isEmpty(areaId)) {
+            final String returnInfo = ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+            this.logger.info(" [continueTaskByCallNumber] callPosition {} continueTask taskOrder throw exception > {}", callPosition, (Object)returnInfo);
+            return returnInfo;
+        }
+        try {
+            this.logger.info(" [continueTaskByCallNumber] callPosition {} continue taskOrder request parameter > {}", callPosition, (Object)JSONObject.toJSONString((Object)params));
+            final String returnInfo = this.outService.continueTaskByCallNum(params);
+            this.logger.info(" [continueTaskByCallNumber] callPosition {} continueTask taskOrder response parameter > {}", callPosition, (Object)returnInfo);
+            return returnInfo;
+        }
+        catch (NumberFormatException e) {
+            this.logger.info(" [continueTaskByCallNumber] requestParam {} continueTask taskOrder throw exception > {}", (Object)JSONObject.toJSONString((Object)params), (Object)e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+    }
+    
+    @BusinessLog
+    @RequestMapping({ "/shelf/changePosition" })
+    public String changeShelfPosition(@RequestBody final String params) {
+        this.logger.info("OutServiceController changeShelfPosition params:{}", (Object)params);
+        try {
+            final JSONArray requestJson = JSONArray.parseArray(params);
+            for (int i = 0; i < requestJson.size(); ++i) {
+                final JSONObject json = requestJson.getJSONObject(i);
+                if (!json.containsKey((Object)"areaId") || CommonUtil.emptyString(json.getInteger("areaId").toString())) {
+                    json.put("areaId", (Object)this.icsSystemConfig.getDefaultAreaId());
+                }
+                final int areaId = Integer.parseInt(json.get((Object)"areaId").toString());
+                if (!json.containsKey((Object)"action") || json.getIntValue("action") == 1) {
+                    if (!json.containsKey((Object)"shelfNum") || CommonUtil.emptyString(json.getString("shelfNum"))) {
+                        return ReplyUtil.replyError(8010, "\u672a\u627e\u5230\u8d27\u67b6\u7f16\u53f7");
+                    }
+                    if (!json.containsKey((Object)"destPosition") || CommonUtil.emptyString(json.getString("destPosition"))) {
+                        return ReplyUtil.replyError(8012, "\u8d27\u67b6\u53d8\u66f4\u7684\u76ee\u6807\u4f4d\u7f6e\u4e0d\u5b58\u5728");
+                    }
+                    String destPosition = json.getString("destPosition");
+                    if (StringUtils.hasText(destPosition)) {
+                        PointsMappingSet pms = new PointsMappingSet(destPosition, areaId);
+                        pms = this.pointsManageMapper.getByPointsMapping(pms);
+                        if (pms != null) {
+                            this.logger.info("[ThirdCancelTask] destPosition: {}, translate to qrContent: {}", (Object)destPosition, (Object)pms.getQrCode());
+                            destPosition = pms.getQrCode();
+                        }
+                    }
+                    json.put("currentContent", (Object)destPosition);
+                    final MapQrNode node = this.bmsAreaMapper.getNodeByContent(areaId, destPosition);
+                    if (node == null) {
+                        return ReplyUtil.replyError(8013, "\u5730\u56fe\u4e2d\u7684\u76ee\u6807\u70b9\u4e0d\u5b58\u5728");
+                    }
+                    json.put("x", (Object)node.getPhysicalX());
+                    json.put("y", (Object)node.getPhysicalY());
+                    if (!json.containsKey((Object)"shelfAngle") && node.getShelfAngle() != null) {
+                        final String shelfAngle = node.getShelfAngle();
+                        final JSONArray shelfAngleArray = JSON.parseArray(shelfAngle);
+                        final String firstShelfAngle = shelfAngleArray.getString(0);
+                        if (!firstShelfAngle.contains("999")) {
+                            json.put("shelfAngle", (Object)(shelfAngleArray.getInteger(0) / 1000));
+                        }
+                    }
+                }
+                else if (json.getIntValue("action") == 2) {
+                    json.put("x", (Object)(-1000000));
+                    json.put("y", (Object)(-1000000));
+                    if (StringUtils.isEmpty((Object)json.getString("shelfNum")) && !StringUtils.isEmpty((Object)json.getString("destPosition"))) {
+                        final String destPosition = json.getString("destPosition");
+                        final OutServiceImpl.ShelfPositionInfo shelfNumberInfo = this.outService.getShelfNumberInfoByQrContent(String.valueOf(areaId), destPosition);
+                        if (shelfNumberInfo != null && !StringUtils.isEmpty((Object)shelfNumberInfo.getShelfCurrStation())) {
+                            json.put("shelfNum", (Object)shelfNumberInfo.getShelfNum());
+                        }
+                    }
+                    if (StringUtils.isEmpty((Object)json.getString("shelfNum"))) {
+                        return ReplyUtil.replyError(8010, "\u672a\u627e\u5230\u8d27\u67b6\u7f16\u53f7");
+                    }
+                }
+                final String result = this.outService.updateShelfNodes(json);
+                this.logger.info("[changeShelfPosition] result>" + result);
+                final JSONObject resultJson = JSONObject.parseObject(result);
+                final Integer code = resultJson.getInteger("code");
+                if (1000 != code) {
+                    return result;
+                }
+            }
+            return ReplyUtil.replySuccess(null);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+    }
+    
+    @BusinessLog
+    @RequestMapping({ "/task/updateOrderPointInfo" })
+    public String updateOrderPointInfo(@RequestBody final String params) {
+        this.logger.info("OutServiceController updateOrderPointInfo params:{}", (Object)params);
+        String result = null;
+        try {
+            final JSONObject json = JSONObject.parseObject(params);
+            if (!json.containsKey((Object)"orderId") && !json.containsKey((Object)"subOrderId")) {
+                return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+            }
+            if (CommonUtil.emptyString(json.getString("orderId")) && CommonUtil.emptyString(json.getString("subOrderId"))) {
+                return ReplyUtil.replyError(8007, "\u5f53\u524d\u8ba2\u5355\u4e0d\u5b58\u5728");
+            }
+            if (json.containsKey((Object)"pointPath") && CommonUtil.emptyString(json.getString("pointPath"))) {
+                return ReplyUtil.replyError(8015, "\u8def\u5f84\u70b9\u96c6\u4e0d\u5b58\u5728");
+            }
+            if (json.containsKey((Object)"storageInfo") && CommonUtil.emptyString(json.getString("storageInfo"))) {
+                return ReplyUtil.replyError(8016, "\u5e93\u4f4d\u70b9\u96c6\u4e0d\u5b58\u5728");
+            }
+            String orderId = json.getString("orderId");
+            final String subOrderId = json.getString("subOrderId");
+            if (CommonUtil.emptyString(orderId)) {
+                orderId = this.taskOrderMapper.getOrderIdBySubOrderId(subOrderId);
+            }
+            final IcsTaskOrder icsTaskOrder = this.taskOrderMapper.getTaskOrderByOutOrderId(orderId);
+            if (icsTaskOrder == null) {
+                return ReplyUtil.replyError(8007, "\u5f53\u524d\u8ba2\u5355\u4e0d\u5b58\u5728");
+            }
+            if (json.containsKey((Object)"pointPath") && !CommonUtil.emptyString(json.getString("pointPath"))) {
+                final String pointPath = json.getString("pointPath");
+                final String[] points = pointPath.split(",");
+                final StringBuilder sb = new StringBuilder();
+                for (final String point : points) {
+                    PointsMappingSet pms = new PointsMappingSet(point, icsTaskOrder.getAreaId());
+                    pms = this.pointsManageMapper.getByPointsMapping(pms);
+                    if (pms != null) {
+                        this.logger.info("[updateOrderPointInfo] point: {}, translate to qrContent: {}", (Object)point, (Object)pms.getQrCode());
+                        sb.append(pms.getQrCode()).append(",");
+                    }
+                    else {
+                        sb.append(point).append(",");
+                    }
+                }
+                result = this.outService.updateOrderPointInfo(json, icsTaskOrder.getId(), sb.deleteCharAt(sb.lastIndexOf(",")).toString(), null);
+            }
+            if (json.containsKey((Object)"storageInfo") && !CommonUtil.emptyString(json.getString("storageInfo"))) {
+                final String storagePath = json.getString("storageInfo");
+                result = this.outService.updateOrderPointInfo(json, icsTaskOrder.getId(), null, storagePath);
+            }
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            result = ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        this.logger.info("OutServiceController updateOrderPointInfo result:{}", (Object)result);
+        return result;
+    }
+    
+    @RequestMapping(value = { "/shelf/getShelfPosition" }, method = { RequestMethod.POST }, produces = { "application/json;charset=UTF-8" })
+    @ResponseBody
+    public String getShelfPositionForThirdService(@RequestBody final String params) {
+        final JSONObject requestJson = JSONObject.parseObject(params);
+        if (!requestJson.containsKey((Object)"areaId") || CommonUtil.emptyString(requestJson.getString("areaId"))) {
+            requestJson.put("areaId", (Object)this.icsSystemConfig.getDefaultAreaId());
+        }
+        return this.outService.getShelfPositionForThirdService(requestJson.toJSONString());
+    }
+    
+    @BusinessLog
+    @RequestMapping(value = { "/updateTaskPriority" }, method = { RequestMethod.POST }, produces = { "application/json;charset=UTF-8" })
+    @ResponseBody
+    public String updateTaskPriority(@RequestBody final String params) {
+        final JSONObject json = JSONObject.parseObject(params);
+        if (!json.containsKey((Object)"orderId") && !json.containsKey((Object)"subOrderId")) {
+            return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+        }
+        if (CommonUtil.emptyString(json.getString("orderId")) && CommonUtil.emptyString(json.getString("subOrderId"))) {
+            return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+        }
+        if (!json.containsKey((Object)"score") && CommonUtil.emptyString(json.getString("score"))) {
+            return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+        }
+        return this.outService.updateTaskPriority(params);
+    }
+    
+    @BusinessLog
+    @RequestMapping(value = { "/padUpdateTaskPriority" }, method = { RequestMethod.POST }, produces = { "application/json;charset=UTF-8" })
+    @ResponseBody
+    public String padUpdateTaskPriority(@RequestBody final String params) {
+        final JSONObject json = JSONObject.parseObject(params);
+        if (!json.containsKey((Object)"tgId")) {
+            return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+        }
+        if (!json.containsKey((Object)"score") && CommonUtil.emptyString(json.getString("score"))) {
+            return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+        }
+        if (!json.containsKey((Object)"priority")) {
+            return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+        }
+        return this.outService.padUpdateTaskPriority(params);
+    }
+    
+    @BusinessLog
+    @RequestMapping({ "/changeShelfSide" })
+    @ResponseBody
+    public String changeShelfSide(@RequestBody final String param) {
+        this.logger.info("/ics/out/changeShelfSide params {}", (Object)param);
+        String result;
+        try {
+            final JSONObject paramJson = JSONObject.parseObject(param);
+            if (StringUtils.isEmpty((Object)paramJson.getString("orderId")) && StringUtils.isEmpty((Object)paramJson.getString("shelfNumber")) && StringUtils.isEmpty((Object)paramJson.getString("subOrderId"))) {
+                return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+            }
+            result = this.outService.changeShelfSide(paramJson);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            result = ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        this.logger.info("/ics/out/changeShelfSide result {}", (Object)result);
+        return result;
+    }
+    
+    @BusinessLog
+    @RequestMapping({ "/removeAGV" })
+    @ResponseBody
+    public String removeAGV(@RequestBody final String param) {
+        this.logger.info("/ics/out/removeAGV params {}", (Object)param);
+        String result;
+        try {
+            final JSONObject paramJson = JSONObject.parseObject(param);
+            if (!paramJson.containsKey((Object)"deviceNumber") || StringUtils.isEmpty((Object)paramJson.getString("deviceNumber"))) {
+                return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+            }
+            result = this.outService.removeDevice(paramJson);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            result = ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        this.logger.info("/ics/out/removeAGV result {}", (Object)result);
+        return result;
+    }
+    
+    @BusinessLog
+    @RequestMapping(value = { "/endTask" }, method = { RequestMethod.POST }, produces = { "application/json;charset=UTF-8" })
+    @ResponseBody
+    public String endTask(@RequestBody final String params, @RequestHeader(value = "appName", required = false) final String appName) {
+        this.logger.info("[OutServiceController.endTask] params: {}", (Object)params);
+        String result;
+        try {
+            final JSONObject paramJson = JSONObject.parseObject(params);
+            if (Objects.isNull(paramJson.getString("orderId")) && Objects.isNull(paramJson.getString("subOrderId"))) {
+                return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+            }
+            result = this.outService.endTask(paramJson, appName);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            result = ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        return result;
+    }
+    
+    @BusinessLog
+    @RequestMapping(value = { "/addNextPoint" }, method = { RequestMethod.POST }, produces = { "application/json;charset=UTF-8" })
+    @ResponseBody
+    public String addNextPoint(@RequestBody final String params) {
+        this.logger.info("[OutServiceController.addNextPoint] params: {}", (Object)params);
+        String result;
+        try {
+            final JSONObject paramJson = JSONObject.parseObject(params);
+            if (StringUtils.isEmpty((Object)paramJson.getString("orderId")) || StringUtils.isEmpty((Object)paramJson.getString("nextPoint"))) {
+                return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+            }
+            result = this.outService.addNextPoint(paramJson);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        return result;
+    }
+    
+    @BusinessLog
+    @RequestMapping(value = { "/getRobotTaskPath" }, method = { RequestMethod.POST }, produces = { "application/json;charset=UTF-8" })
+    @ResponseBody
+    public String getRobotTaskPath(@RequestBody final String jsonStr) {
+        this.logger.info("jsonStr is :{}", (Object)jsonStr);
+        final JSONObject requestJson = JSONObject.parseObject(jsonStr);
+        if (!requestJson.containsKey((Object)"areaId") || org.apache.commons.lang3.StringUtils.isEmpty((CharSequence)requestJson.getInteger("areaId").toString())) {
+            requestJson.put("areaId", (Object)this.icsSystemConfig.getDefaultAreaId());
+        }
+        return this.pmsFeign.getRobotTaskPath(requestJson.toJSONString());
+    }
+    
+    @BusinessLog
+    @RequestMapping(value = { "/controlDevice" }, method = { RequestMethod.POST }, produces = { "application/json;charset=UTF-8" })
+    @ResponseBody
+    public String controlDevice(@RequestBody final String params) {
+        this.logger.info("[OutServiceController.controlDevice] params: {}", (Object)params);
+        String result;
+        try {
+            final JSONObject paramJson = JSONObject.parseObject(params);
+            if (CommonUtil.emptyObject(paramJson.getInteger("controlWay"))) {
+                return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+            }
+            result = this.outService.controlDevice(paramJson);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        return result;
+    }
+    
+    @BusinessLog
+    @RequestMapping(value = { "/askZone" }, method = { RequestMethod.POST }, produces = { "application/json;charset=UTF-8" })
+    @ResponseBody
+    public String askZone(@RequestBody final String params) {
+        final JSONObject jsonObject = JSON.parseObject(params);
+        if (StringUtil.isNullOrEmpty(jsonObject.getString("reqCode")) || StringUtil.isNullOrEmpty(jsonObject.getString("deviceNumber")) || StringUtil.isNullOrEmpty(jsonObject.getString("askZoneCode")) || StringUtil.isNullOrEmpty(jsonObject.getString("action"))) {
+            return ReplyUtil.replyError(7201, "\u8bf7\u6c42\u53c2\u6570\u4e0d\u5408\u6cd5");
+        }
+        return this.outService.askZone(jsonObject);
+    }
+    
+    @RequestMapping(value = { "/enableForbiddenZone" }, method = { RequestMethod.POST })
+    @ResponseBody
+    @BusinessLog
+    public String enableForbiddenZone(@RequestBody final String param) {
+        String result = null;
+        try {
+            this.logger.info("[enableForbiddenZone] -> req:{}", (Object)param);
+            result = this.taskService.enableForbiddenZone(param);
+            this.logger.info("[enableForbiddenZone] -> req:{}", (Object)result);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        return result;
+    }
+    
+    @RequestMapping(value = { "/taskProcessList" }, method = { RequestMethod.POST })
+    @ResponseBody
+    public String taskProcessList(@RequestBody final String param) {
+        String result = null;
+        try {
+            result = this.taskService.taskProcessList(param);
+            this.logger.info("[taskProcessList] -> rsp:{}", (Object)result);
+            return result;
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+    }
+    
+    @RequestMapping(value = { "/taskTemplateList" }, method = { RequestMethod.POST })
+    @ResponseBody
+    public String taskTemplateList(@RequestBody final String param) {
+        String result = null;
+        try {
+            result = this.taskService.taskTemplateList(param);
+            this.logger.info("[taskTemplateList] -> rsp:{}", (Object)result);
+            return result;
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+    }
+    
+    @RequestMapping(value = { "/topologyList" }, method = { RequestMethod.POST })
+    @ResponseBody
+    public String topologyList(@RequestBody final String param) {
+        String result = null;
+        try {
+            result = this.taskService.topologyList(param);
+            this.logger.info("[topologyList] -> rsp:{}", (Object)result);
+            return result;
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+    }
+    
+    @BusinessLog
+    @RequestMapping(value = { "/task/preDispatch" }, method = { RequestMethod.POST }, produces = { "application/json;charset=UTF-8" })
+    @ResponseBody
+    public String preDispatch(@RequestBody final String params) {
+        this.logger.info("[OutServiceController.preDispatch] params: {}", (Object)params);
+        String result;
+        try {
+            result = this.outService.preDispatch(params);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        return result;
+    }
+    
+    @RequestMapping(value = { "/updateMaterialInfo" }, method = { RequestMethod.POST })
+    @ResponseBody
+    public String updateMaterialInfo(@RequestBody final String param) {
+        final String result = null;
+        try {
+            this.materialInfo = JSONArray.parseArray(param);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        return ReplyUtil.replySuccess(null);
+    }
+    
+    @RequestMapping(value = { "/getMaterialInfo" }, method = { RequestMethod.POST })
+    @ResponseBody
+    public String getMaterialInfo(@RequestBody final String param) {
+        try {
+            return ReplyUtil.replySuccess(this.materialInfo);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+    }
+    
+    @RequestMapping(value = { "/task/busModeAddTask" }, method = { RequestMethod.POST })
+    @ResponseBody
+    public String busModeEndTask(@RequestBody final String params) {
+        String result = "";
+        try {
+            final JSONObject jsonObject = JSONObject.parseObject(params);
+            result = this.outService.busModeEndTask(jsonObject);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        return result;
+    }
+    
+    @RequestMapping(value = { "/task/pdaConfirmRelease" }, method = { RequestMethod.POST })
+    @ResponseBody
+    public String confirmRelease(@RequestBody final String params) {
+        this.logger.info("[confirmRelease] request param is:{}", (Object)params);
+        String result = "";
+        try {
+            final JSONObject jsonObject = JSONObject.parseObject(params);
+            result = this.outService.confirmReleaseTask(jsonObject);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        return result;
+    }
+    
+    @RequestMapping(value = { "/task/getOrderList" }, method = { RequestMethod.POST })
+    @ResponseBody
+    public String getOrderList(@RequestBody final String params) {
+        String result = "";
+        try {
+            final JSONObject inputParam = JSONObject.parseObject(params);
+            if (!inputParam.containsKey((Object)"areaId") || StringUtils.isEmpty((Object)inputParam.getInteger("areaId"))) {
+                inputParam.put("areaId", (Object)this.icsSystemConfig.getDefaultAreaId());
+            }
+            result = this.bmsFeign.getOrders(inputParam.toJSONString());
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        return result;
+    }
+    
+    @RequestMapping(value = { "/task/getMessageTimeout" }, method = { RequestMethod.POST })
+    @ResponseBody
+    public String getMessageTimeout() {
+        String result = "";
+        try {
+            result = this.commonSystemConfig.getMessageTimeout().toString();
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        return result;
+    }
+    
+    @RequestMapping(value = { "/gocharging" }, method = { RequestMethod.POST })
+    @ResponseBody
+    public String goCharging(@RequestBody final String params) {
+        String result = "";
+        try {
+            result = this.outService.goCharging(params);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        return result;
+    }
+    
+    @RequestMapping(value = { "/finishCharging" }, method = { RequestMethod.POST })
+    @ResponseBody
+    public String finishCharging(@RequestBody final String params) {
+        String result = "";
+        try {
+            result = this.outService.finishCharging(params);
+        }
+        catch (Exception e) {
+            CommonUtil.errorLogs(this.logger, e);
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        return result;
+    }
+    
+    @RequestMapping(value = { "/queryShelfModelByNum" }, method = { RequestMethod.POST })
+    public String getShelfModel(@RequestBody final JSONObject params) {
+        this.logger.info("queryParams :{}", (Object)params);
+        final String shelfNum = params.getString("shelfNum");
+        final String deviceCode = params.getString("DeviceSerialNo");
+        if (org.apache.commons.lang.StringUtils.isEmpty(deviceCode)) {
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        final Map<String, Object> map = new HashMap<String, Object>();
+        map.put("shelfNum", shelfNum);
+        final Integer areaId = this.agvManagerService.getRobotAreaId(deviceCode);
+        if (areaId == null) {
+            return ReplyUtil.replyError(1001, "\u8bf7\u6c42\u5931\u8d25");
+        }
+        map.put("areaId", areaId);
+        final ShelfConfig shelfConfig = this.shelfConfigService.queryShelfByNum(map);
+        this.logger.info("shelfConfig: {}", (Object)shelfConfig);
+        map.clear();
+        if ("".equals(shelfNum)) {
+            map.put("model", "");
+        }
+        else {
+            if (shelfConfig == null) {
+                final List<LoadConfig> list = new ArrayList<LoadConfig>();
+                return ReplyUtil.replySuccess(list);
+            }
+            map.put("model", shelfConfig.getShelfType());
+        }
+        final List<LoadConfig> resLoadConfigList = this.shelfConfigService.queryLoadConfigByModel(map);
+        this.logger.info("shelfModelInfo--->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>{}", (Object)resLoadConfigList);
+        return ReplyUtil.replySuccess(resLoadConfigList);
+    }
+}

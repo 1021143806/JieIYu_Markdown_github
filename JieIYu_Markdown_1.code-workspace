@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "JieIYu_Markdown_1",
+			"path": "."
+		}
+	],
+	"settings": {
+		"editor.fontSize": 20,
+		"editor.cursorStyle": "line",
+		"editor.bracketPairColorization.independentColorPoolPerBracketType": true
+	}
+}

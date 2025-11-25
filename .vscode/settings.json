@@ -1,0 +1,8 @@
+{
+    "editor.fontSize": 20,
+    "editor.cursorStyle": "line",
+    "editor.bracketPairColorization.independentColorPoolPerBracketType": true,
+    "Codegeex.Chat.LanguagePreference": "中文",
+    "Codegeex.Comment.LanguagePreference": "中文",
+    "Codegeex.SidebarUI.LanguagePreference": "中文"
+}

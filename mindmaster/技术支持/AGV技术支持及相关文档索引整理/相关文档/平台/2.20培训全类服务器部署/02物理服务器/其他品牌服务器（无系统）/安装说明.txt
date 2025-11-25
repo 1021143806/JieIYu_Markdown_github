@@ -1,0 +1,8 @@
+制作好的U盘插入服务器，选择U盘启动，自动化安装开始，预计30分钟左右完成整个安装过程
+
+安装完成后默认IP：172.18.101.10
+登录用户名：ymsk
+
+如何确认是否安装完成，查询auto.sh的进程，没有即为安装完成
+[ymsk@iRaypleOS ~]$ ps -ef | grep auto.sh | grep -v grep
+ymsk     1048761  970054  0 11:14 pts/0    00:00:00 grep --color=auto auto.sh

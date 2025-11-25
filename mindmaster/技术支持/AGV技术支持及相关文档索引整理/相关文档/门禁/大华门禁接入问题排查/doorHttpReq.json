@@ -1,0 +1,81 @@
+{
+	"id": "121f0fb4-5d62-7f23-8efb-4818a7fe91df",
+	"name": "COLLECTION",
+	"description": "",
+	"order": [
+		"0ef56c43-c2f4-6c2f-e714-a8c5a7ca7b5c",
+		"b94bd8d6-f56f-6664-9cca-d88fd1e4a7ad"
+	],
+	"folders": [],
+	"folders_order": [],
+	"timestamp": 1621343183293,
+	"owner": 0,
+	"public": false,
+	"events": [],
+	"variables": [],
+	"auth": null,
+	"requests": [
+		{
+			"id": "0ef56c43-c2f4-6c2f-e714-a8c5a7ca7b5c",
+			"headers": "Content-Type: application/json\n",
+			"headerData": [
+				{
+					"key": "Content-Type",
+					"value": "application/json",
+					"description": "",
+					"enabled": true
+				}
+			],
+			"url": "http://127.0.0.1:9090/door/getStatus",
+			"queryParams": [],
+			"pathVariables": {},
+			"pathVariableData": [],
+			"events": [],
+			"auth": null,
+			"method": "POST",
+			"collectionId": "121f0fb4-5d62-7f23-8efb-4818a7fe91df",
+			"data": [],
+			"dataMode": "raw",
+			"name": "http://127.0.0.1:9090/door/getStatus",
+			"description": "",
+			"descriptionFormat": "html",
+			"time": 1621343206396,
+			"version": 2,
+			"responses": [],
+			"currentHelper": null,
+			"helperAttributes": null,
+			"rawModeData": "{\"doorCode\":\"MJ01\"}"
+		},
+		{
+			"id": "b94bd8d6-f56f-6664-9cca-d88fd1e4a7ad",
+			"headers": "Content-Type: application/json\n",
+			"headerData": [
+				{
+					"key": "Content-Type",
+					"value": "application/json",
+					"description": "",
+					"enabled": true
+				}
+			],
+			"url": "http://127.0.0.1:9090/door/controlDoor",
+			"queryParams": [],
+			"pathVariables": {},
+			"pathVariableData": [],
+			"events": [],
+			"auth": null,
+			"method": "POST",
+			"collectionId": "121f0fb4-5d62-7f23-8efb-4818a7fe91df",
+			"data": [],
+			"dataMode": "raw",
+			"name": "http://127.0.0.1:9090/door/controlDoor",
+			"description": "",
+			"descriptionFormat": "html",
+			"time": 1621343212178,
+			"version": 2,
+			"responses": [],
+			"currentHelper": null,
+			"helperAttributes": null,
+			"rawModeData": "{\r\n    \"doorCode\": \"MJ01\",\r\n    \"status\": 2\r\n}\r\n"
+		}
+	]
+}

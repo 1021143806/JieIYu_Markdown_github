@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AGV任务下发系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/toml@0.5.1/dist/toml.min.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-light: #4895ef;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --warning: #f72585;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --border-radius: 12px;
+            --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        .dark-mode {
+            --primary: #5a7dff;
+            --primary-light: #6d8eff;
+            --secondary: #4a5cd4;
+            --success: #5fd3f0;
+            --warning: #ff2d95;
+            --light: #1a1d23;
+            --dark: #e9ecef;
+            --gray: #adb5bd;
+            --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--dark);
+            min-height: 100vh;
+            transition: var(--transition);
+            padding: 20px;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .dark-mode header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+        }
+
+        .theme-toggle {
+            background: var(--light);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--box-shadow);
+            transition: var(--transition);
+            font-size: 1.2rem;
+        }
+
+        .dark-mode .theme-toggle {
+            background: var(--dark);
+            color: var(--light);
+        }
+
+        .card {
+            background: var(--light);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 30px;
+            margin-bottom: 30px;
+            transition: var(--transition);
+        }
+
+        .dark-mode .card {
+            background: #2d3748;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .dark-mode label {
+            color: var(--dark);
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: var(--border-radius);
+            background: var(--light);
+            color: var(--dark);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .dark-mode select, .dark-mode input {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #4a5568;
+            color: var(--dark);
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+        }
+
+        .btn {
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 14px 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
+        }
+
+        .btn:disabled {
+            background: var(--gray);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .error {
+            color: var(--warning);
+            font-size: 0.9rem;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .response-box {
+            background: #f1f3f9;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+            display: none;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .dark-mode .response-box {
+            background: #1a202c;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .debug-toggle {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            border-radius: var(--border-radius);
+            padding: 8px 15px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: var(--transition);
+        }
+
+        .dark-mode .debug-toggle {
+            border: 1px solid var(--primary-light);
+            color: var(--primary-light);
+        }
+
+        .debug-toggle:hover {
+            background: rgba(67, 97, 238, 0.1);
+        }
+
+        .debug-info {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: var(--border-radius);
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+        }
+
+        .dark-mode .debug-info {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .dark-mode footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--light);
+            border-radius: var(--border-radius);
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: var(--box-shadow);
+            text-align: center;
+        }
+
+        .dark-mode .modal-content {
+            background: #2d3748;
+        }
+
+        .modal h2 {
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .modal p {
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .modal-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .modal-btn:hover {
+            background: var(--primary-light);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .cooldown-notice {
+            background: rgba(247, 37, 133, 0.1);
+            border-left: 4px solid var(--warning);
+            padding: 10px 15px;
+            margin-top: 15px;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+            display: none;
+        }
+
+        .dark-mode .cooldown-notice {
+            background: rgba(247, 37, 133, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AGV任务下发系统</h1>
+            <button class="theme-toggle" id="themeToggle">🌙</button>
+        </header>
+
+        <div class="card">
+            <div class="form-group">
+                <label for="areaSelect">选择区域</label>
+                <select id="areaSelect">
+                    <option value="">-- 请选择区域 --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="taskSelect">任务模板</label>
+                <select id="taskSelect">
+                    <option value="">-- 请选择任务模板 --</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="shelfGroup">
+                <label for="shelfInput">货架号</label>
+                <input type="text" id="shelfInput" placeholder="请输入货架号">
+                <div class="error" id="shelfError">请输入货架号</div>
+            </div>
+
+            <div class="form-group hidden" id="taskPathGroup">
+                <label for="taskPathSelect">任务路径</label>
+                <select id="taskPathSelect">
+                    <option value="">-- 请选择任务路径 --</option>
+                </select>
+                <div class="error" id="taskPathError">请选择任务路径</div>
+            </div>
+
+            <button class="btn" id="submitBtn">下发任务</button>
+            <div class="cooldown-notice" id="cooldownNotice">该货架号在5分钟内已下发过任务，请勿重复下发</div>
+
+            <button class="debug-toggle" id="debugToggle">显示调试信息</button>
+            <div class="debug-info" id="debugInfo"></div>
+
+            <div class="response-box" id="responseBox"></div>
+        </div>
+
+        <footer id="footerText">任务下发系统 © 2025 | 运营 AGV 组提供技术支持</footer>
+    </div>
+
+    <div class="modal" id="successModal">
+        <div class="modal-content">
+            <h2>任务下发成功</h2>
+            <p>任务已成功下发，请勿重复下发。</p>
+            <button class="modal-btn" id="modalClose">确定</button>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let config = null;
+        let currentArea = null;
+        let cooldownMap = new Map(); // 存储货架号冷却时间
+
+        // DOM 元素
+        const themeToggle = document.getElementById('themeToggle');
+        const areaSelect = document.getElementById('areaSelect');
+        const taskSelect = document.getElementById('taskSelect');
+        const shelfGroup = document.getElementById('shelfGroup');
+        const shelfInput = document.getElementById('shelfInput');
+        const shelfError = document.getElementById('shelfError');
+        const taskPathGroup = document.getElementById('taskPathGroup');
+        const taskPathSelect = document.getElementById('taskPathSelect');
+        const taskPathError = document.getElementById('taskPathError');
+        const submitBtn = document.getElementById('submitBtn');
+        const cooldownNotice = document.getElementById('cooldownNotice');
+        const debugToggle = document.getElementById('debugToggle');
+        const debugInfo = document.getElementById('debugInfo');
+        const responseBox = document.getElementById('responseBox');
+        const successModal = document.getElementById('successModal');
+        const modalClose = document.getElementById('modalClose');
+        const footerText = document.getElementById('footerText');
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfig();
+            setupEventListeners();
+            checkThemePreference();
+        });
+
+        // 加载配置文件
+        async function loadConfig() {
+            try {
+                const response = await fetch('config.toml');
+                const tomlText = await response.text();
+                config = TOML.parse(tomlText);
+                
+                // 更新页面标题和页脚
+                document.title = config.general.title;
+                footerText.textContent = config.general.footer_text;
+                
+                // 填充区域选择
+                populateAreaSelect();
+            } catch (error) {
+                console.error('加载配置文件失败:', error);
+                alert('配置文件加载失败，请检查config.toml文件是否存在且格式正确。');
+            }
+        }
+
+        // 填充区域选择下拉框
+        function populateAreaSelect() {
+            areaSelect.innerHTML = '<option value="">-- 请选择区域 --</option>';
+            
+            for (const areaKey in config.areas) {
+                const option = document.createElement('option');
+                option.value = areaKey;
+                option.textContent = areaKey;
+                areaSelect.appendChild(option);
+            }
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 主题切换
+            themeToggle.addEventListener('click', toggleTheme);
+            
+            // 区域选择变化
+            areaSelect.addEventListener('change', handleAreaChange);
+            
+            // 任务选择变化
+            taskSelect.addEventListener('change', handleTaskChange);
+            
+            // 输入框变化时隐藏错误信息
+            shelfInput.addEventListener('input', () => hideError(shelfError));
+            taskPathSelect.addEventListener('change', () => hideError(taskPathError));
+            
+            // 提交按钮
+            submitBtn.addEventListener('click', submitTask);
+            
+            // 调试信息切换
+            debugToggle.addEventListener('click', toggleDebugInfo);
+            
+            // 模态框关闭
+            modalClose.addEventListener('click', () => successModal.style.display = 'none');
+        }
+
+        // 切换主题
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            themeToggle.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+        }
+
+        // 检查主题偏好
+        function checkThemePreference() {
+            const darkMode = localStorage.getItem('darkMode') === 'true';
+            if (darkMode) {
+                document.body.classList.add('dark-mode');
+                themeToggle.textContent = '☀️';
+            }
+        }
+
+        // 处理区域变化
+        function handleAreaChange() {
+            const areaKey = areaSelect.value;
+            if (!areaKey) {
+                taskSelect.innerHTML = '<option value="">-- 请选择任务模板 --</option>';
+                resetForm();
+                return;
+            }
+            
+            currentArea = config.areas[areaKey];
+            populateTaskSelect();
+            resetForm();
+        }
+
+        // 填充任务选择下拉框
+        function populateTaskSelect() {
+            taskSelect.innerHTML = '<option value="">-- 请选择任务模板 --</option>';
+            
+            // 普通任务
+            if (currentArea.tasks) {
+                for (const [taskName, taskCode] of Object.entries(currentArea.tasks)) {
+                    const option = document.createElement('option');
+                    option.value = taskCode;
+                    option.textContent = taskName;
+                    option.dataset.type = 'normal';
+                    taskSelect.appendChild(option);
+                }
+            }
+            
+            // 特殊任务
+            if (currentArea.特殊任务) {
+                for (const [taskName, taskConfig] of Object.entries(currentArea.特殊任务)) {
+                    const option = document.createElement('option');
+                    option.value = taskConfig.code;
+                    option.textContent = taskName;
+                    option.dataset.type = 'special';
+                    option.dataset.config = JSON.stringify(taskConfig);
+                    taskSelect.appendChild(option);
+                }
+            }
+        }
+
+        // 处理任务变化
+        function handleTaskChange() {
+            const selectedOption = taskSelect.options[taskSelect.selectedIndex];
+            const taskType = selectedOption.dataset.type;
+            
+            // 重置表单
+            resetForm();
+            
+            if (!selectedOption.value) return;
+            
+            // 检查是否需要货架号
+            let requiresShelf = true;
+            let requiresTaskPath = false;
+            let taskPathOptions = [];
+            
+            if (taskType === 'special') {
+                const taskConfig = JSON.parse(selectedOption.dataset.config);
+                requiresShelf = taskConfig.requires_shelf;
+                requiresTaskPath = taskConfig.requires_task_path;
+                taskPathOptions = taskConfig.task_path_options || [];
+            } else {
+                // 普通任务：如果任务代码包含"K_"或中文描述包含"空车"，则不需要货架号
+                const taskCode = selectedOption.value;
+                const taskName = selectedOption.textContent;
+                requiresShelf = !(taskCode.includes('K_') || taskName.includes('空车'));
+            }
+            
+            // 显示/隐藏货架号输入
+            shelfGroup.style.display = requiresShelf ? 'block' : 'none';
+            
+            // 显示/隐藏任务路径选择
+            if (requiresTaskPath && taskPathOptions.length > 0) {
+                taskPathGroup.classList.remove('hidden');
+                populateTaskPathSelect(taskPathOptions);
+            } else {
+                taskPathGroup.classList.add('hidden');
+            }
+            
+            // 检查冷却时间
+            checkCooldown();
+        }
+
+        // 填充任务路径选择下拉框
+        function populateTaskPathSelect(options) {
+            taskPathSelect.innerHTML = '<option value="">-- 请选择任务路径 --</option>';
+            
+            options.forEach(optionValue => {
+                const option = document.createElement('option');
+                option.value = optionValue;
+                option.textContent = optionValue;
+                taskPathSelect.appendChild(option);
+            });
+        }
+
+        // 重置表单
+        function resetForm() {
+            shelfGroup.style.display = 'none';
+            taskPathGroup.classList.add('hidden');
+            shelfInput.value = '';
+            taskPathSelect.selectedIndex = 0;
+            hideError(shelfError);
+            hideError(taskPathError);
+            cooldownNotice.style.display = 'none';
+            responseBox.style.display = 'none';
+            debugInfo.style.display = 'none';
+            debugToggle.textContent = '显示调试信息';
+        }
+
+        // 隐藏错误信息
+        function hideError(errorElement) {
+            errorElement.style.display = 'none';
+        }
+
+        // 显示错误信息
+        function showError(errorElement) {
+            errorElement.style.display = 'block';
+        }
+
+        // 检查冷却时间
+        function checkCooldown() {
+            const shelfNumber = shelfInput.value.trim();
+            if (!shelfNumber) {
+                cooldownNotice.style.display = 'none';
+                return;
+            }
+            
+            const now = Date.now();
+            const lastSubmitTime = cooldownMap.get(shelfNumber);
+            
+            if (lastSubmitTime && (now - lastSubmitTime) < 5 * 60 * 1000) {
+                cooldownNotice.style.display = 'block';
+                submitBtn.disabled = true;
+            } else {
+                cooldownNotice.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        }
+
+        // 切换调试信息
+        function toggleDebugInfo() {
+            if (debugInfo.style.display === 'block') {
+                debugInfo.style.display = 'none';
+                debugToggle.textContent = '显示调试信息';
+            } else {
+                debugInfo.style.display = 'block';
+                debugToggle.textContent = '隐藏调试信息';
+            }
+        }
+
+        // 提交任务
+        async function submitTask() {
+            // 验证表单
+            if (!validateForm()) return;
+            
+            // 准备请求数据
+            const requestData = prepareRequestData();
+            
+            // 显示调试信息
+            debugInfo.textContent = JSON.stringify(requestData, null, 2);
+            
+            // 禁用提交按钮
+            submitBtn.disabled = true;
+            submitBtn.textContent = '下发中...';
+            
+            try {
+                // 发送请求
+                const response = await fetch(currentArea.base_url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const result = await response.json();
+                
+                // 显示响应
+                responseBox.textContent = JSON.stringify(result, null, 2);
+                responseBox.style.display = 'block';
+                
+                // 处理响应
+                if (result.code === 1000) {
+                    // 成功
+                    successModal.style.display = 'flex';
+                    
+                    // 设置冷却时间（如果需要货架号）
+                    const selectedOption = taskSelect.options[taskSelect.selectedIndex];
+                    const taskType = selectedOption.dataset.type;
+                    
+                    if (taskType === 'special') {
+                        const taskConfig = JSON.parse(selectedOption.dataset.config);
+                        if (taskConfig.requires_shelf) {
+                            cooldownMap.set(shelfInput.value.trim(), Date.now());
+                        }
+                    } else {
+                        // 普通任务：如果任务代码不包含"K_"且中文描述不包含"空车"，则需要冷却
+                        const taskCode = selectedOption.value;
+                        const taskName = selectedOption.textContent;
+                        if (!(taskCode.includes('K_') || taskName.includes('空车'))) {
+                            cooldownMap.set(shelfInput.value.trim(), Date.now());
+                        }
+                    }
+                } else {
+                    // 失败
+                    alert(`任务下发失败: ${result.desc || '未知错误'}`);
+                }
+            } catch (error) {
+                // 网络错误
+                responseBox.textContent = `网络错误: ${error.message}`;
+                responseBox.style.display = 'block';
+                alert('任务下发失败: 网络错误');
+            } finally {
+                // 恢复提交按钮
+                submitBtn.disabled = false;
+                submitBtn.textContent = '下发任务';
+            }
+        }
+
+        // 验证表单
+        function validateForm() {
+            let isValid = true;
+            
+            // 检查区域
+            if (!areaSelect.value) {
+                alert('请选择区域');
+                return false;
+            }
+            
+            // 检查任务模板
+            if (!taskSelect.value) {
+                alert('请选择任务模板');
+                return false;
+            }
+            
+            // 检查货架号（如果需要）
+            const selectedOption = taskSelect.options[taskSelect.selectedIndex];
+            const taskType = selectedOption.dataset.type;
+            
+            if (taskType === 'special') {
+                const taskConfig = JSON.parse(selectedOption.dataset.config);
+                if (taskConfig.requires_shelf && !shelfInput.value.trim()) {
+                    showError(shelfError);
+                    isValid = false;
+                }
+                
+                if (taskConfig.requires_task_path && !taskPathSelect.value) {
+                    showError(taskPathError);
+                    isValid = false;
+                }
+            } else {
+                // 普通任务：如果任务代码不包含"K_"且中文描述不包含"空车"，则需要货架号
+                const taskCode = selectedOption.value;
+                const taskName = selectedOption.textContent;
+                if (!(taskCode.includes('K_') || taskName.includes('空车')) && !shelfInput.value.trim()) {
+                    showError(shelfError);
+                    isValid = false;
+                }
+            }
+            
+            return isValid;
+        }
+
+        // 准备请求数据
+        function prepareRequestData() {
+            const selectedOption = taskSelect.options[taskSelect.selectedIndex];
+            const taskType = selectedOption.dataset.type;
+            
+            // 生成订单ID
+            const now = new Date();
+            const orderId = `pad_html${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+            
+            // 基础数据
+            const requestData = [{
+                modelProcessCode: selectedOption.value,
+                priority: 6,
+                orderId: orderId,
+                fromSystem: "pad-html",
+                taskOrderDetail: {
+                    taskPath: "",
+                    shelfNumber: ""
+                }
+            }];
+            
+            // 设置货架号（如果需要）
+            if (shelfGroup.style.display !== 'none') {
+                requestData[0].taskOrderDetail.shelfNumber = shelfInput.value.trim();
+            }
+            
+            // 设置任务路径（如果需要）
+            if (!taskPathGroup.classList.contains('hidden') && taskPathSelect.value) {
+                requestData[0].taskOrderDetail.taskPath = taskPathSelect.value;
+            }
+            
+            return requestData;
+        }
+    </script>
+</body>
+</html>

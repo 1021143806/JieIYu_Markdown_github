@@ -1,0 +1,41 @@
+# AGV任务下发系统配置
+
+[general]
+title = "AGV任务下发系统"
+footer_text = "任务下发系统 © 2025 | 运营 AGV 组提供技术支持"
+
+[areas]
+    [areas.A2-2存储备料]
+    base_url = "http://10.68.2.32:7000/ics/taskOrder/addTask"
+    
+        [areas.A2-2存储备料.tasks]
+        "老座舱_送满A2存储备料去A2存储一部3F" = "xialiaoDA02-LZC"
+        "放大器_送满A2存储备料去A2存储一部3F" = "xialiaoDA02-FDQ"
+        "屏装线_送满A2存储备料去A2存储一部3F" = "xialiaoDA02-PZX"
+        "NFC线_送满A2存储备料去A2存储一部3F" = "xialiaoDA02-NFCline"
+        "右域控制器_送满A2存储备料去A2存储一部3F" = "xialiaoDA02-YYKZQ"
+        "TBOX_送满A2存储备料去A2存储一部3F" = "xialiaoDA02-TBOX"
+        "整车座椅_送满A2存储备料去A2存储一部3F" = "xialiaoDA02-ZCZY"
+        "B10座舱_送满A2存储备料去A2存储一部3F" = "xialiaoDA02-B10ZC"
+        "回空A2备料2F去A2华消3F" = "HJBY_17A2BL2F_to_19A2HX3F_back"
+    
+    [areas.A2-2存储备料.特殊任务]
+        [areas.A2-2存储备料.特殊任务.上架任务]
+        code = "shangjiafangxia"
+        requires_shelf = true
+        requires_task_path = true
+        task_path_options = ["33254836", "33254835"]
+        
+        [areas.A2-2存储备料.特殊任务.上架回库任务]
+        code = "shangjiafangxiahk"
+        requires_shelf = true
+        requires_task_path = false
+
+    [areas.A1-1PCBA]
+    base_url = "http://10.68.2.32:7000/ics/taskOrder/addTask"
+    
+        [areas.A1-1PCBA.tasks]
+        "送满A1pcba1F去A2华昱欣3F" = "HJBY_31A1DZ1F_to_19A2HYX3F_go"
+        "回空A1pcba1F去A2华昱欣3F" = "HJBY_31A1DZ1F_to_19A2HYX3F_back"
+        "空车A1pcba1F去A2华昱欣3F" = "K_31A1DZ1F_to_19A2HYX3F_go"
+        "空车A1pcba1F去A2华昱欣3F回" = "K_31A1DZ1F_to_19A2HYX3F_leave"

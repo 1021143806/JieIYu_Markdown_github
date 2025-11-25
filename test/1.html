@@ -1,0 +1,8 @@
+安装 CUDA 12.1 适配的 PyTorch 2.1.0
+
+Bash
+pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121
+安装匹配的 xFormers
+
+Bash
+pip install xformers==0.0.22.post7 --extra-index-url https://download.pytorch.org/whl/cu121 --no-deps

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>绘图可视化 - 怪调小镇临摹 - 双胞胎兄妹</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @font-face {
+            font-family: 'DFYuan';
+            src: local('华康圆体W7(P)'), local('DFYuanW7-GB');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'DFYuan', 'Comic Sans MS', 'Marker Felt', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 1920px;
+            height: 1080px;
+            position: relative;
+            border-radius: 35px;
+            overflow: hidden;
+            background: #f5f9ff;
+            box-shadow: 0 25px 60px rgba(100, 150, 200, 0.3);
+            border: 8px solid #4caf50;
+        }
+        
+        /* 顶部标题栏 */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: #ff9e6b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 50px;
+            z-index: 20;
+            border-bottom: 6px solid #ff6b6b;
+            border-radius: 0 0 35px 35px;
+        }
+        
+        .title {
+            font-size: 46px;
+            font-weight: bold;
+            color: white;
+            letter-spacing: 1px;
+            text-shadow: 3px 3px 0 #ff6b6b;
+        }
+        
+        .software-info {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 60px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .info-card {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .info-card i {
+            color: #4caf50;
+            font-size: 32px;
+        }
+        
+        /* 主画布区域 - 纯绿色背景用于抠像 */
+        .canvas-container {
+            position: absolute;
+            top: 110px; /* 下移避免被顶部栏遮挡 */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 940px;
+            height: 940px;
+            z-index: 10;
+            background: #00ff00;
+            border: 12px solid #4caf50;
+            box-shadow: 0 0 30px rgba(0,0,0,0.2);
+            border-radius: 25px;
+        }
+        
+        /* 左侧参考素材区域 - 纯绿色背景用于抠像 */
+        .reference-panel {
+            position: absolute;
+            top: 160px;
+            left: 50px;
+            width: 380px;
+            height: 380px;
+            background: #00ff00;
+            border: 10px solid #4caf50;
+            border-radius: 25px;
+            z-index: 5;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        
+        .panel-title {
+            position: absolute;
+            top: -55px;
+            left: 0;
+            background: #4d79ff;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 28px;
+            font-weight: bold;
+            box-shadow: 0 6px 0 #2a3f90;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        /* 右侧信息面板 - 简化内容 */
+        .info-panel {
+            position: absolute;
+            top: 160px;
+            right: 50px;
+            width: 380px;
+            height: 600px;
+            background: white;
+            border-radius: 30px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            z-index: 5;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border: 8px solid #4d79ff;
+        }
+        
+        .info-title {
+            background: #ff9e6b;
+            color: white;
+            padding: 15px;
+            border-radius: 25px;
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: -45px;
+            box-shadow: 0 6px 0 #ff6b6b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .specs {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            margin-top: 20px;
+        }
+        
+        .spec-card {
+            background: #e3f2fd;
+            border-radius: 25px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            border: 4px solid #bbdefb;
+        }
+        
+        .spec-icon {
+            width: 70px;
+            height: 70px;
+            background: #4d79ff;
+            border-radius: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            color: white;
+            box-shadow: 0 5px 0 #2a3f90;
+        }
+        
+        .spec-value {
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            color: #2a3f90;
+        }
+        
+        .spec-label {
+            font-size: 24px;
+            text-align: center;
+            color: #555;
+        }
+        
+        /* 纯手绘创作面板 - 放在左侧 */
+        .handmade-panel {
+            position: absolute;
+            top: 560px; /* 在参考面板下方 */
+            left: 50px;
+            width: 380px;
+            height: 240px;
+            background: white;
+            border-radius: 30px;
+            padding: 25px;
+            z-index: 5;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border: 8px solid #4caf50;
+        }
+        
+        .handmade-title {
+            background: #4caf50;
+            color: white;
+            padding: 15px;
+            border-radius: 25px;
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: -45px;
+            box-shadow: 0 6px 0 #2e7d32;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .handmade-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .handmade-icon {
+            width: 70px;
+            height: 70px;
+            background: #4caf50;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            color: white;
+            box-shadow: 0 5px 0 #2e7d32;
+        }
+        
+        .handmade-text {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            color: #2e7d32;
+        }
+        
+        /* BGM播放器 */
+        .bgm-player {
+            position: absolute;
+            bottom: 10px;
+            left: 50px;
+            width: 380px;
+            height: 230px;
+            background: white;
+            border-radius: 30px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 5;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border: 8px solid #ff6b6b;
+        }
+        
+        .music-title {
+            background: #ff6b6b;
+            color: white;
+            padding: 15px;
+            border-radius: 25px;
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: -45px;
+            box-shadow: 0 6px 0 #c44d58;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .music-controls {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            margin-top: 10px;
+        }
+        
+        .music-info {
+            flex: 1;
+            background: #ffebee;
+            padding: 20px;
+            border-radius: 20px;
+        }
+        
+        .music-title-text {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2a3f90;
+            text-align: center;
+        }
+        
+        .music-artist {
+            font-size: 24px;
+            color: #333;
+            text-align: center;
+        }
+        
+        .play-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 25px;
+            background: #4d79ff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+            cursor: pointer;
+            color: white;
+            box-shadow: 0 8px 0 #2a3f90;
+            transition: all 0.2s;
+        }
+        
+        .play-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 #2a3f90;
+        }
+        
+        /* 创作工具面板 */
+        .tools-panel {
+            position: absolute;
+            bottom: 16px;
+            right: 50px;
+            width: 380px;
+            height: 220px;
+            background: white;
+            border-radius: 30px;
+            padding: 25px;
+            z-index: 5;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border: 8px solid #ff9e6b;
+        }
+        
+        .tools-title {
+            background: #ff9e6b;
+            color: white;
+            padding: 15px;
+            border-radius: 25px;
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: -45px;
+            box-shadow: 0 6px 0 #ff6b6b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .tools-content {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 30px;
+        }
+        
+        .tool-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .tool-icon {
+            width: 60px;
+            height: 60px;
+            background: #ff9e6b;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            color: white;
+        }
+        
+        .tool-label {
+            font-size: 20px;
+            color: #555;
+        }
+        
+        /* 装饰元素 */
+        .decoration {
+            position: absolute;
+            z-index: 2;
+            border-radius: 50%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .bubble {
+            background: rgba(255, 255, 255, 0.8);
+        }
+        
+        .rounded-rect {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 装饰元素 -->
+        <div class="decoration bubble" style="width: 140px; height: 140px; top: 120px; left: 250px; background: #ffd54f;"></div>
+        <div class="decoration bubble" style="width: 100px; height: 100px; top: 240px; right: 320px; background: #4d79ff;"></div>
+        <div class="decoration rounded-rect" style="width: 200px; height: 70px; bottom: 220px; left: 320px; background: #ff9e6b;"></div>
+        <div class="decoration rounded-rect" style="width: 170px; height: 60px; bottom: 320px; right: 280px; background: #4caf50;"></div>
+        
+        <!-- 顶部标题栏 -->
+        <div class="top-bar">
+            <div class="title">
+                <i class="fas fa-paint-brush"></i> 怪诞小镇S1-1临摹 - 双胞胎姐弟
+            </div>
+            <div class="software-info">
+                <div class="info-card">
+                    <i class="fas fa-desktop"></i>
+                    <span>CatOS</span>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-palette"></i>
+                    <span>Krita</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主画布区域 - 纯绿色背景 -->
+        <div class="canvas-container">
+            <!-- 纯绿色背景用于抠像 -->
+        </div>
+        
+        <!-- 左侧参考素材区域 - 纯绿色背景 -->
+        <div class="reference-panel">
+            <div class="panel-title">
+                <i class="fas fa-image"></i> 参考素材
+            </div>
+            <!-- 纯绿色背景用于抠像 -->
+        </div>
+        
+        <!-- 纯手绘创作面板 - 左侧下方 -->
+        <div class="handmade-panel">
+            <div class="handmade-title">
+                <i class="fas fa-paint-brush"></i> 创作声明
+            </div>
+            <div class="handmade-content">
+                <div class="handmade-icon">
+                    <i class="fas fa-hands"></i>
+                </div>
+                <div class="handmade-text">
+                    100%纯手绘创作 · 无AI生成
+                </div>
+            </div>
+        </div>
+        
+        <!-- 右侧信息面板 - 简化内容 -->
+        <div class="info-panel">
+            <div class="info-title">
+                <i class="fas fa-info-circle"></i> 创作信息
+            </div>
+            <div class="specs">
+                <div class="spec-card">
+                    <div class="spec-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="spec-value">2.8小时</div>
+                    <div class="spec-label">创作时长</div>
+                </div>
+                <div class="spec-card">
+                    <div class="spec-icon">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div class="spec-value">4层</div>
+                    <div class="spec-label">图层数量</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- BGM播放器 -->
+        <div class="bgm-player">
+            <div class="music-title">
+                <i class="fas fa-music"></i> 背景音乐
+            </div>
+            <div class="music-controls">
+                <div class="play-btn">
+                    <i class="fas fa-play"></i>
+                </div>
+                <div class="music-info">
+                    <div class="music-title-text">BMade Me Realize</div>
+                    <div class="music-artist">Brad Breeck</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 创作工具面板 -->
+        <div class="tools-panel">
+            <div class="tools-title">
+                <i class="fas fa-tools"></i> 创作工具
+            </div>
+            <div class="tools-content">
+                <div class="tool-item">
+                    <div class="tool-icon">
+                        <i class="fas fa-tablet"></i>
+                    </div>
+                    <div class="tool-label">数位板</div>
+                </div>
+                <div class="tool-item">
+                    <div class="tool-icon">
+                        <i class="fas fa-pen"></i>
+                    </div>
+                    <div class="tool-label">压感笔</div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 添加交互效果
+        document.addEventListener('DOMContentLoaded', function() {
+            // 播放按钮效果
+            const playBtn = document.querySelector('.play-btn');
+            playBtn.addEventListener('click', function() {
+                const icon = this.querySelector('i');
+                if (icon.classList.contains('fa-play')) {
+                    icon.classList.remove('fa-play');
+                    icon.classList.add('fa-pause');
+                } else {
+                    icon.classList.remove('fa-pause');
+                    icon.classList.add('fa-play');
+                }
+                
+                // 添加动画效果
+                this.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    this.style.transform = 'scale(1)';
+                }, 200);
+            });
+        });
+    </script>
+</body>
+</html>

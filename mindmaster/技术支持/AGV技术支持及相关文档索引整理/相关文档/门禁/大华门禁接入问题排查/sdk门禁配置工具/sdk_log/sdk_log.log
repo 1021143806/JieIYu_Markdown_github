@@ -1,0 +1,65 @@
+Begin Time:2023-04-03 10:00:56.575
+[2023-04-03 10:00:56.576][P:10448/T:17560][Talk.cpp:128][Error][90000000] LoadArmEncDll armenc_vs2010_md32_dll.dll failed.
+[2023-04-03 10:00:56.620][P:10448/T:17560][dhnetsdk.cpp:115][Info][0] Leave CLIENT_InitEx.
+[2023-04-03 10:01:03.108][P:10448/T:17560][dhnetsdk.cpp:346][Info][0] Enter CLIENT_LoginEx. [IP=172.23.1.225, port=37777, nSpeCap=0, lpDeviceInfo=0019F3B0.]
+[2023-04-03 10:01:04.610][P:10448/T:17560][TPTCPClient.cpp:550][Error][90010007] Connect host failed, ip:172.23.1.225
+[2023-04-03 10:01:04.610][P:10448/T:17560][dhdevprob.cpp:1997][Error][9001000d] Failed to create main connection
+[2023-04-03 10:01:04.610][P:10448/T:17560][Manager.cpp:5389][Error][90010002] Login device failed, errorcode:9!
+[2023-04-03 10:01:04.617][P:10448/T:17560][dhnetsdk.cpp:373][Error][90010002] Login failed, ip:172.23.1.225, port:37777, specCap:0!
+[2023-04-03 10:01:04.617][P:10448/T:17560][dhnetsdk.cpp:382][Info][0] Leave CLIENT_LoginEx. [error=9, login ID=0.]
+[2023-04-03 10:01:33.786][P:10448/T:17560][dhnetsdk.cpp:346][Info][0] Enter CLIENT_LoginEx. [IP=127.0.0.1, port=37777, nSpeCap=0, lpDeviceInfo=0019F3B0.]
+[2023-04-03 10:01:33.877][P:10448/T:17560][dhdevprob.cpp:699][Error][90010002] Failed to login device , err:0
+[2023-04-03 10:01:33.877][P:10448/T:17560][dhdevprob.cpp:1854][Error][90010002] Parse login response err:0
+[2023-04-03 10:01:33.877][P:10448/T:17560][dhdevprob.cpp:2071][Error][90010012] Failed to send login data
+[2023-04-03 10:01:33.877][P:10448/T:17560][Manager.cpp:5389][Error][90010002] Login device failed, errorcode:1!
+[2023-04-03 10:01:33.877][P:10448/T:17560][dhnetsdk.cpp:373][Error][90010002] Login failed, ip:127.0.0.1, port:37777, specCap:0!
+[2023-04-03 10:01:33.877][P:10448/T:17560][dhnetsdk.cpp:382][Info][0] Leave CLIENT_LoginEx. [error=1, login ID=0.]
+[2023-04-03 10:01:53.272][P:10448/T:17560][dhnetsdk.cpp:346][Info][0] Enter CLIENT_LoginEx. [IP=127.0.0.1, port=37777, nSpeCap=0, lpDeviceInfo=0019F3B0.]
+[2023-04-03 10:01:53.348][P:10448/T:17560][dhdevprob.cpp:699][Error][90010002] Failed to login device , err:0
+[2023-04-03 10:01:53.348][P:10448/T:17560][dhdevprob.cpp:1854][Error][90010002] Parse login response err:0
+[2023-04-03 10:01:53.348][P:10448/T:17560][dhdevprob.cpp:2071][Error][90010012] Failed to send login data
+[2023-04-03 10:01:53.348][P:10448/T:17560][Manager.cpp:5389][Error][90010002] Login device failed, errorcode:1!
+[2023-04-03 10:01:53.348][P:10448/T:17560][dhnetsdk.cpp:373][Error][90010002] Login failed, ip:127.0.0.1, port:37777, specCap:0!
+[2023-04-03 10:01:53.348][P:10448/T:17560][dhnetsdk.cpp:382][Info][0] Leave CLIENT_LoginEx. [error=1, login ID=0.]
+[2023-04-03 10:01:59.167][P:10448/T:17560][dhnetsdk.cpp:346][Info][0] Enter CLIENT_LoginEx. [IP=127.0.0.1, port=5002, nSpeCap=0, lpDeviceInfo=0019F3B0.]
+[2023-04-03 10:02:00.668][P:10448/T:17560][TPTCPClient.cpp:550][Error][90010007] Connect host failed, ip:127.0.0.1
+[2023-04-03 10:02:00.668][P:10448/T:17560][dhdevprob.cpp:1997][Error][9001000d] Failed to create main connection
+[2023-04-03 10:02:00.668][P:10448/T:17560][Manager.cpp:5389][Error][90010002] Login device failed, errorcode:9!
+[2023-04-03 10:02:00.668][P:10448/T:17560][dhnetsdk.cpp:373][Error][90010002] Login failed, ip:127.0.0.1, port:5002, specCap:0!
+[2023-04-03 10:02:00.668][P:10448/T:17560][dhnetsdk.cpp:382][Info][0] Leave CLIENT_LoginEx. [error=9, login ID=0.]
+[2023-04-03 10:02:04.716][P:10448/T:17560][dhnetsdk.cpp:346][Info][0] Enter CLIENT_LoginEx. [IP=127.0.0.1, port=37777, nSpeCap=0, lpDeviceInfo=0019F3B0.]
+[2023-04-03 10:02:04.806][P:10448/T:17560][dhdevprob.cpp:699][Error][90010002] Failed to login device , err:0
+[2023-04-03 10:02:04.806][P:10448/T:17560][dhdevprob.cpp:1854][Error][90010002] Parse login response err:0
+[2023-04-03 10:02:04.806][P:10448/T:17560][dhdevprob.cpp:2071][Error][90010012] Failed to send login data
+[2023-04-03 10:02:04.806][P:10448/T:17560][Manager.cpp:5389][Error][90010002] Login device failed, errorcode:1!
+[2023-04-03 10:02:04.806][P:10448/T:17560][dhnetsdk.cpp:373][Error][90010002] Login failed, ip:127.0.0.1, port:37777, specCap:0!
+[2023-04-03 10:02:04.806][P:10448/T:17560][dhnetsdk.cpp:382][Info][0] Leave CLIENT_LoginEx. [error=1, login ID=0.]
+[2023-04-03 10:11:45.889][P:10448/T:17560][dhnetsdk.cpp:3015][Info][0] Enter CLIENT_StopListen. [lLoginID=0.]
+[2023-04-03 10:11:45.889][P:10448/T:17560][dhnetsdk.cpp:3024][Error][90000009] Invalid login handle:00000000
+Begin Time:2023-12-11 15:52:18.198
+[2023-12-11 15:52:18.199][P:24776/T:27992][Talk.cpp:128][Error][90000000] LoadArmEncDll armenc_vs2010_md32_dll.dll failed.
+[2023-12-11 15:52:18.321][P:24776/T:27992][dhnetsdk.cpp:115][Info][0] Leave CLIENT_InitEx.
+[2023-12-11 15:52:26.295][P:24776/T:27992][dhnetsdk.cpp:346][Info][0] Enter CLIENT_LoginEx. [IP=172.23.1.225, port=37777, nSpeCap=0, lpDeviceInfo=0019F3B0.]
+[2023-12-11 15:52:27.801][P:24776/T:27992][TPTCPClient.cpp:550][Error][90010007] Connect host failed, ip:172.23.1.225
+[2023-12-11 15:52:27.802][P:24776/T:27992][dhdevprob.cpp:1997][Error][9001000d] Failed to create main connection
+[2023-12-11 15:52:27.803][P:24776/T:27992][Manager.cpp:5389][Error][90010002] Login device failed, errorcode:9!
+[2023-12-11 15:52:27.803][P:24776/T:27992][dhnetsdk.cpp:373][Error][90010002] Login failed, ip:172.23.1.225, port:37777, specCap:0!
+[2023-12-11 15:52:27.803][P:24776/T:27992][dhnetsdk.cpp:382][Info][0] Leave CLIENT_LoginEx. [error=9, login ID=0.]
+[2023-12-11 15:52:42.080][P:24776/T:27992][dhnetsdk.cpp:346][Info][0] Enter CLIENT_LoginEx. [IP=192.168.0.2, port=37777, nSpeCap=0, lpDeviceInfo=0019F3B0.]
+[2023-12-11 15:52:42.175][P:24776/T:27992][dhdevprob.cpp:1799][Error][90010002] Third protocol login only
+[2023-12-11 15:52:42.176][P:24776/T:27992][dhdevprob.cpp:2071][Error][90010012] Failed to send login data
+[2023-12-11 15:52:42.177][P:24776/T:27992][Manager.cpp:5389][Error][90010002] Login device failed, errorcode:11!
+[2023-12-11 15:52:42.222][P:24776/T:27992][dhnetsdk.cpp:367][Error][90010003] Login failed, ip:192.168.0.2, port:37777, specCap:0!
+[2023-12-11 15:52:42.222][P:24776/T:27992][dhnetsdk.cpp:382][Info][0] Leave CLIENT_LoginEx. [error=-1, login ID=0.]
+[2023-12-11 15:52:48.834][P:24776/T:27992][dhnetsdk.cpp:346][Info][0] Enter CLIENT_LoginEx. [IP=192.168.0.2, port=37777, nSpeCap=0, lpDeviceInfo=0019F3B0.]
+[2023-12-11 15:52:48.910][P:24776/T:27992][dhdevprob.cpp:1799][Error][90010002] Third protocol login only
+[2023-12-11 15:52:48.911][P:24776/T:27992][dhdevprob.cpp:2071][Error][90010012] Failed to send login data
+[2023-12-11 15:52:48.911][P:24776/T:27992][Manager.cpp:5389][Error][90010002] Login device failed, errorcode:11!
+[2023-12-11 15:52:48.959][P:24776/T:27992][dhnetsdk.cpp:367][Error][90010003] Login failed, ip:192.168.0.2, port:37777, specCap:0!
+[2023-12-11 15:52:48.959][P:24776/T:27992][dhnetsdk.cpp:382][Info][0] Leave CLIENT_LoginEx. [error=-1, login ID=0.]
+[2023-12-11 15:52:56.721][P:24776/T:27992][dhnetsdk.cpp:346][Info][0] Enter CLIENT_LoginEx. [IP=192.168.0.2, port=37777, nSpeCap=0, lpDeviceInfo=0019F3B0.]
+[2023-12-11 15:52:56.801][P:24776/T:27992][dhdevprob.cpp:1799][Error][90010002] Third protocol login only
+[2023-12-11 15:52:56.802][P:24776/T:27992][dhdevprob.cpp:2071][Error][90010012] Failed to send login data
+[2023-12-11 15:52:56.802][P:24776/T:27992][Manager.cpp:5389][Error][90010002] Login device failed, errorcode:11!
+[2023-12-11 15:52:56.847][P:24776/T:27992][dhnetsdk.cpp:367][Error][90010003] Login failed, ip:192.168.0.2, port:37777, specCap:0!
+[2023-12-11 15:52:56.847][P:24776/T:27992][dhnetsdk.cpp:382][Info][0] Leave CLIENT_LoginEx. [error=-1, login ID=0.]
